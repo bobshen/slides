@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+    <meta charset="utf-8">
+    <title>2016 Q3前端话题分享 - AOP</title>
+    <meta name="description" content="AOP">
+    <meta name="author" content="shenbin">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,minimal-ui">
+
+    <link rel="stylesheet" href="../../reveal.js/css/reveal.css">
+    <link rel="stylesheet" href="../../reveal.js/css/theme/black.css" id="theme">
+    <link rel="stylesheet" href="../../reveal.js/lib/css/zenburn.css">
+
+    <!--[if lt IE 9]>
+    <script src="../../reveal.js/lib/js/html5shiv.js"></script>
+    <![endif]-->
+    <style type="text/css">
+        .reveal pre {
+            width: 800px;
+            font-size: 14px;
+        }
+
+        strong {
+            color: #dedb74;
+        }
+
+        .reveal .bordered {
+            border: 1px dashed #f00;
+        }
+
+        .reveal .advantage {
+            color: #27a264;
+        }
+
+        .reveal .shortage {
+            color: #fecd52;
+        }
+    </style>
+    <script src="../../reveal.js-helper/lib/socket.io.js"></script>
+    <script src="../../reveal.js-helper/lib/display.js"></script>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <section>
+                <h1>AOP</h1>
+                <h5>@shenbin</h5>
+            </section>
+
+            <section>
+                <section>
+                    <h2>Why</h2>
+                </section>
+
+                <section>
+                    <h3>举个例子</h3>
+                    <pre><code data-trim>
+export class Bmw {
+    start() {
+        // log once
+    }
+}
+
+export class Benz {
+    start() {
+        // log once
+    }
+}
+
+export class Tesla {
+    start() {
+        // log once
+    }
+}
+                    </code></pre>
+                    <p>三个类都需要记录启动前的日志</p>
+                </section>
+
+                <section>
+                    <h3>思路一</h3>
+                    <p>继承基类</p>
+                    <pre><code data-trim>
+export class Car {
+    start() {
+        // log once
+    }
+}
+
+export class Bmw extends Car {}
+export class Benz extends Car {}
+export class Tesla extends Car {}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3 class="shortage">缺点</h3>
+                    <ul>
+                        <li class="fragment">基类设计倒置</li>
+                        <li class="fragment">某些场景下无法满足需求<pre><code data-trim>
+export class Car {
+    start() {
+        // log once
+    }
+}
+
+export class Bmw extends Car {
+    start() {
+        super.start();
+
+        // log again
+    }
+}
+export class Benz extends Car {
+    start() {
+        super.start();
+
+        // log again
+    }
+}
+export class Tesla extends Car {}
+                        </code></pre></li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>思路二</h3>
+                    <p>逻辑抽离调用</p>
+                    <pre><code data-trim>
+function log() {}
+
+export class Bmw extends Car {
+    start() {
+        log();
+    }
+}
+export class Benz extends Car {
+    start() {
+        log();
+    }
+}
+export class Tesla extends Car {
+    start() {
+        log();
+    }
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3 class="shortage">缺点</h3>
+                    <ul>
+                        <li class="fragment">各处均需显式调用</li>
+                        <li class="fragment">代码侵入性</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>另一种思路</h3>
+                    <p>AOP</p>
+                    <pre><code data-trim>
+function log() {}
+function logAgain() {}
+                    </code></pre>
+                    <pre><code data-trim>
+export class Bmw extends Car {
+    start() {}
+}
+export class Benz extends Car {
+    start() {}
+}
+export class Tesla extends Car {
+    start() {}
+}
+                    </code></pre>
+                </section>
+            </section>
+
+            <section>
+                <section>
+                    <h2>What</h2>
+                </section>
+
+                <section>
+                    <h3>AOP(<strong>A</strong>spect <strong>O</strong>riented <strong>P</strong>rogramming)</h3>
+                    <h4>面向切面编程</h4>
+                    <ul>
+                        <li class="fragment">一种编程范式</li>
+                        <li class="fragment">关注点分离</li>
+                        <li class="fragment">横切</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>一些AOP术语</h3>
+                    <ul class="fragment">
+                        <li>Joinpoint</li>
+                        <li>Pointcut</li>
+                        <li>Advice</li>
+                        <li>Introduction</li>
+                        <li>Aspect</li>
+                        <li>Weaving</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Joinpoint - 连接点</h3>
+                    <p>需要增强逻辑的程序位置</p>
+                    <pre><code data-trim data-noescape>
+export class Bmw extends Car {
+    <mark>start() {}</mark>
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>Pointcut - 切点</h3>
+                    <p>匹配连接点的条件</p>
+                    <pre><code data-trim>
+let pointcut1 = ['Bmw#start', 'Benz#start'];
+let pointcut2 = ['Benz#start', 'Tesla#start'];
+                    </code></pre>
+                    <p>切点与连接点是<strong>多对多</strong>的对应关系</p>
+                </section>
+
+                <section>
+                    <h3>Advice - 增强</h3>
+                    <p>在连接点上增强的逻辑</p>
+                    <ol>
+                        <li>增强的内容</li>
+                        <pre><code data-trim>
+function log() {}
+                        </code></pre>
+                        <li>增强的类型</li>
+                        <ul>
+                            <li>Before advice</li>
+                            <li>After returning advice</li>
+                            <li>After throwing advice</li>
+                            <li>After advice</li>
+                            <li>Around advice</li>
+                        </ul>
+                    </ol>
+                </section>
+
+                <section>
+                    <h3>Introduction - 引入</h3>
+                    <p>为对象增加方法或属性，<strong>一种特殊的增强</strong></p>
+                </section>
+
+                <section>
+                    <h3>Aspect - 切面</h3>
+                    <p><strong>切面</strong> = <strong>切点</strong> + (<strong>增强</strong> || <strong>引入</strong>)</p>
+                </section>
+
+                <section>
+                    <h3>Weaving - 织入</h3>
+                    <p>将切面应用到目标对象</p>
+                    <ul>
+                        <li>编译期</li>
+                        <li>类加载期</li>
+                        <li>运行期</li>
+                    </ul>
+                </section>
+            </section>
+
+            <section>
+                <section>
+                    <h2>How</h2>
+                </section>
+
+                <section>
+                    <h3>后端(Java)</h3>
+                </section>
+
+                <section>
+                    <h3>AOP实现原理</h3>
+                </section>
+
+                <section>
+                    <h3>编译期</h3>
+                    <p class="fragment">在编译时，将切面增强代码织入到连接点代码中</p>
+                    <p class="fragment advantage">优点</p>
+                    <ul class="fragment">
+                        <li>不产生额外的运行期开销</li>
+                    </ul>
+                    <p class="fragment shortage">不足</p>
+                    <ul class="fragment">
+                        <li>额外的语法学习成本</li>
+                        <li>需要特殊的编译器</li>
+                        <li>不能很好地配合模块化的项目</li>
+                    </ul>
+                    <p class="fragment">代表框架：AspectJ</p>
+                </section>
+
+                <section>
+                    <h3>类加载期</h3>
+                    <p class="fragment">在类加载时，将切面字节码织入</p>
+                    <p class="fragment shortage">不足</p>
+                    <ul class="fragment">
+                        <li>需要特殊的类加载器</li>
+                        <li>额外的配置</li>
+                    </ul>
+                    <p class="fragment">代表框架：AspectJ</p>
+                </section>
+
+                <section>
+                    <h3>运行期</h3>
+                    <p class="fragment">程序运行时将切面逻辑织入，借助<strong>动态代理</strong>技术</p>
+                    <p class="fragment advantage">优点</p>
+                    <ul class="fragment">
+                        <li>不需要特殊的编译器或者类加载器</li>
+                    </ul>
+                    <p class="fragment shortage">不足</p>
+                    <ul class="fragment">
+                        <li>运行时的性能开销</li>
+                    </ul>
+                    <p class="fragment">代表框架：Spring</p>
+                </section>
+
+                <section>
+                    <h3>动态代理</h3>
+                    <p  class="fragment">两种代理机制</p>
+                    <ul class="fragment">
+                        <li>JDK动态代理</li>
+                        <li>CGLib动态代理</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>JDK动态代理</h3>
+                    <p>借助了<code>java.lang.reflect</code>包的两个类</p>
+                    <strong>Proxy</strong>和<strong>InvocationHandler</strong>
+                </section>
+
+                <section>
+                    <h3>CGLib动态代理</h3>
+                    <p>采用字节码技术，运行时动态创建代理子类</p>
+                </section>
+
+                <section>
+                    <h3>JDK与CGLib的对比</h3>
+                    <ul>
+                        <li class="fragment">JDK创建代理对象比较快，但执行方法比较慢</li>
+                        <li class="fragment">CGLib创建代理对象比较慢，但执行方法比较快</li>
+                        <li class="fragment">JDK只能代理接口</li>
+                        <li class="fragment">CGLib可以代理没有通过接口定义方法的类</li>
+                        <li class="fragment">CGLib不能处理代理类的<strong>final</strong>、<strong>private</strong>方法</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>AOP应用方式</h3>
+                </section>
+
+                <section>
+                    <h3>编程式</h3>
+                    <strong>Spring</strong>
+                    <pre><code data-trim>
+// 接口
+public interface Test {
+    public void sayHello(String name);
+}
+
+// 实现
+public class TestImpl implements Test {
+    @Override
+    public void sayHello(String name) {}
+}
+
+// 增强
+public class TestBeforeAdvice implements MethodBeforeAdvice {
+    @Override
+    public void before(Method method, Object[] args, Object target) throws Throwable {}
+}
+                    </code></pre>
+                    <pre><code data-trim>
+// 调用
+public class Client {
+    public void main(String[] args) {
+        ProxyFactory proxyFactory = new ProxyFactory();
+        TestImpl target = new TestImpl();
+        TestBeforeAdvice targetBeforeAdvice = new TestBeforeAdvice();
+
+        proxyFactory.setInterfaces(target.getClass().getInterfaces());
+        proxyFactory.setTarget(target);
+        proxyFactory.addAdvice(targetBeforeAdvice);
+
+        TestImpl test = (TestImpl) proxyFactory.getProxy();
+        test.sayHello("Bob");
+    }
+}
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>声明式</h3>
+                    <ul>
+                        <li>基于XML</li>
+                        <li>基于注解</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>基于XML</h3>
+                    <strong>Spring</strong>
+                    <pre><code data-trim>
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd"&gt;
+
+    <bean id="testImpl" class="test.TestImpl"></bean>
+
+    <bean id="testBeforeAdvice" class="test.TestBeforeAdvice"></bean>
+
+    <bean id="client" class="org.springframework.aop.framework.ProxyFactoryBean">
+        <property name="interfaces" value="test.Test"></property>
+        <property name="target" ref="testImpl"></property>
+        <property name="interceptorNames" value="testBeforeAdvice"></property>
+    </bean>
+&lt;/beans&gt;
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>基于注解</h3>
+                    <p><strong>Spring</strong> + <strong>AspectJ</strong></p>
+                    <pre><code data-trim>
+@Aspect
+public class TestBeforeAspect {
+
+    @before("execution(* test.TestImpl.before(..))")
+    public void before(Method method, Object[] args, Object target) throws Throwable {}
+}
+                    </code></pre>
+                    <pre><code data-trim>
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/aop
+       http://www.springframework.org/schema/aop/spring-aop.xsd"&gt;
+
+    <bean id="testImpl" class="test.TestImpl"></bean>
+
+    <bean id="testBeforeAspect" class="test.TestBeforeAspect"></bean>
+
+    <aop:aspectj-autoproxy proxy-target-class="true"></aop:aspectj-autoproxy>
+&lt;/beans&gt;
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>前端(JavaScript)</h3>
+                </section>
+
+                <section>
+                    <h3>AOP实现原理</h3>
+                </section>
+
+                <section>
+                    <h3>编译期</h3>
+                    <p>技术上可以实现<strong>transform regenerator</strong></p>
+                    <p>可用于处理静态声明的方法</p>
+                    <p>不可用于动态创建的方法</p>
+                    <p>增强后的方法可能在运行时被修改失效</p>
+                    <p>同样存在类似后端配合模块化项目的问题</p>
+                </section>
+
+                <section>
+                    <h3><del>类加载期</del></h3>
+                </section>
+
+                <section>
+                    <h3>运行期</h3>
+                    <p>技术上可以借助<strong>High-level Function</strong>在运行时织入增强</p>
+                    <p></p>
+                </section>
+
+                <section>
+                    <h3>AOP应用方式</h3>
+                </section>
+
+                <section>
+                    <h3>编程式</h3>
+                    <pre><code data-trim>
+// 类
+export class Test {
+    start() {}
+}
+
+// 增强
+export default {
+    before(method) {}
+}
+                    </code></pre>
+                    <pre><code data-trim>
+// 调用
+import {before} from 'advices';
+
+let test = new Test();
+test.start = before(test.start);
+                    </code></pre>
+                </section>
+
+                <section>
+                    <h3>声明式</h3>
+                    <ul>
+                        <li>基于JSON</li>
+                        <li>基于注解</li>
+                    </ul>
+                    <p>利用ES6的<strong>decorator</strong>模拟注解的效果</p>
+                    <pre><code data-trim>
+// 增强
+export default {
+    before(target, name, descriptor) {}
+    introduction(target) {}
+}
+                    </code></pre>
+                    <pre><code data-trim>
+// 类
+import {before, introduction} from 'advices';
+
+@introduction
+export class Test {
+    @before
+    start() {}
+}
+                    </code></pre>
+                    <pre><code data-trim>
+// 调用
+let test = new Test();
+                    </code></pre>
+                </section>
+            </section>
+
+            <section>
+                <section>
+                    <h2>When</h2>
+                </section>
+
+                <section>
+                    <p>关键在于理解<strong>横切</strong></p>
+                </section>
+
+                <section>
+                    <p>区分与<strong>OOP</strong>在设计思想上的差异</p>
+                    <ul>
+                        <li>OOP是纵向的抽象</li>
+                        <li>AOP是横向的抽象</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <p>非某个类的核心领域业务逻辑可以考虑用AOP抽象</p>
+                    <p>非特定归属某个（些）类的逻辑可以考虑用AOP抽象</p>
+                    <p>仅用于前置、后置等增强，无法改变原有方法的执行逻辑</p>
+                    <p>（稍后讨论）</p>
+                </section>
+            </section>
+
+            <section>
+                <section>
+                    <h2>Where</h2>
+                </section>
+
+                <section>
+                    <h3>后端常见应用场景</h3>
+                    <ul>
+                        <li>日志记录</li>
+                        <li>事务处理</li>
+                        <li>性能统计</li>
+                        <li>异常处理</li>
+                        <li>权限验证</li>
+                        <li>安全控制</li>
+                        <li>etc.</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>前端应用场景</h3>
+                </section>
+
+                <section>
+                    <p>非必要关注点&跨层关注点</p>
+                    <ul>
+                        <li>日志记录</li>
+                        <li>性能统计</li>
+                        <li>权限验证</li>
+                        <li>异常处理(401、500...)</li>
+                        <li>延迟请求</li>
+                        <li>请求重发</li>
+                        <li>乐观式</li>
+                        <li>结果缓存</li>
+                        <li>前后端类型转换(Date...)</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>Q&A</h3>
+                </section>
+            </section>
+        </div>
+    </div>
+
+    <script src="../../reveal.js/lib/js/head.min.js"></script>
+    <script src="../../reveal.js/js/reveal.js"></script>
+    <script src="./config.js"></script>
+</body>
+</html>
